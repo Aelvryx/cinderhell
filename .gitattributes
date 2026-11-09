@@ -10,4 +10,4 @@ gradlew text eol=lf
 *.zip binary
 
 # Unified diffs necessarily encode blank context lines with a leading space.
-native/patches/*.patch -whitespace
+native/patches/*.patch text eol=lf -whitespace

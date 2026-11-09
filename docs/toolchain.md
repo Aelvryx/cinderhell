@@ -50,9 +50,12 @@ text assets are packaged verbatim into a checksummed PK3; CRLF conversion
 changes that checksum even though the files look identical in an editor.
 
 ```powershell
-git -c core.autocrlf=false clone --recurse-submodules https://github.com/Aelvryx/cinderhell.git
+git -c core.autocrlf=false -c core.eol=lf clone --recurse-submodules https://github.com/Aelvryx/cinderhell.git
 cd cinderhell
 git config core.autocrlf false
+git config core.eol lf
+git submodule foreach --recursive git config core.autocrlf false
+git submodule foreach --recursive git config core.eol lf
 $gitBash = "$env:USERPROFILE/scoop/apps/git/current/bin/bash.exe"
 & $gitBash scripts/fetch-native-dependencies.sh
 & $gitBash scripts/apply-native-patches.sh

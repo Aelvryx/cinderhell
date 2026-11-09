@@ -47,3 +47,31 @@ Validated Bluetooth-gamepad support is intentionally deferred and is not an
 MVP acceptance dependency. External pads discovered through SDL may work on a
 best-effort basis, but Cinderhell does not currently promise compatible
 mappings, rumble, or physical disconnect/reconnect behavior.
+
+## Preview 3 publication gate
+
+Published `v0.1.0-preview.3` on 2026-11-09 from commit
+`13ddc813be2ee41c8f4210ebf6fa39d2d1bfe08a`. The exact signed APK was installed
+on an AYN Odin2 Portal running Android 13 before publication. The maintainer
+confirmed rendering, sound, controller input, and return to the launcher.
+Device logs showed one native engine thread, `SDL_main` returning 0, activity
+destruction, and no remaining game process after Quit.
+
+The APK is the non-debuggable `arm64-v8a` preview package, version
+`0.1.0-preview.3` (`1000003`), using the existing dedicated preview signer.
+Its SHA-256 is:
+
+```text
+1bb8f4361cd5cefc7737db58af48199a006e706fc191b727a502ee906f520b69
+```
+
+Both downloaded assets matched `SHA256SUMS`. The corresponding-source archive
+contains the new audio bridge, tests, Android code, native patch, and updated
+OpenSpec contract; signing material and local SDK configuration are excluded.
+
+[PR checks](https://github.com/Aelvryx/cinderhell/actions/runs/42687981792),
+[main checks](https://github.com/Aelvryx/cinderhell/actions/runs/42689660683), and
+the [signed-release workflow](https://github.com/Aelvryx/cinderhell/actions/runs/42689690472)
+passed. Android 16 physical call/music evidence and the 53 JVM / 13 device-test
+results are recorded in `lifecycle-gate.md`. This gate does not expand the
+Bluetooth-controller compatibility promise above.

@@ -25,7 +25,7 @@ class GameActivity : SDLActivity() {
     private var requestedSessionId = ""
     private var descriptor: GameSessionDescriptor? = null
     private var nativeArguments: Array<String>? = null
-    private lateinit var audioFocus: GameAudioFocusController
+    private lateinit var audio: GameAudioController
     private lateinit var controllerMonitor: ControllerDeviceMonitor
     private var controllerWasConnected = false
 
@@ -35,11 +35,7 @@ class GameActivity : SDLActivity() {
     @Volatile
     private var destroyRequested = false
 
-    @Volatile
-    private var resultWritten = false
-
-    @Volatile
-    private var terminateAfterDestroy = false
+    private val completion = GameSessionCompletion { Process.killProcess(Process.myPid()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         sessionStore = SessionStore(AppPaths(filesDir))
@@ -47,15 +43,9 @@ class GameActivity : SDLActivity() {
             intent?.getStringExtra(BundledSessionCoordinator.SESSION_ID_EXTRA).orEmpty()
         super.onCreate(savedInstanceState)
         GamePresentationController.configureImmersive(this)
-        audioFocus = GameAudioFocusController(
-            context = this,
-            onFocusLost = {
-                if (activityResumed) pauseNativeThread()
-            },
-            onFocusGained = {
-                if (activityResumed) resumeNativeThread()
-            },
-        )
+        audio = GameAudioController(this) { muted ->
+            if (!mBrokenLibraries) nativeSetAudioMuted(muted)
+        }
         controllerMonitor = ControllerDeviceMonitor(this) { state ->
             runOnUiThread {
                 if (controllerWasConnected && !state.connected) {
@@ -79,12 +69,19 @@ class GameActivity : SDLActivity() {
                 ::sendBackToGame,
             )
         }
+        // Claim the envelope before the native thread starts, including when
+        // Android interrupts the activity during launch.
+        try {
+            descriptor = sessionStore.consumePending(requestedSessionId)
+        } catch (error: SessionValidationException) {
+            writeStartupFailure(error.code, error.message.orEmpty())
+            finishAfterStartupFailure()
+        }
     }
 
     override fun main() {
         try {
-            val current = sessionStore.consumePending(requestedSessionId)
-            descriptor = current
+            val current = checkNotNull(descriptor) { "Validated session is unavailable" }
             RuntimeAssetInstaller.ensureInstalled(this)
             nativeArguments = GameArgumentsBuilder.build(current)
             runOnUiThread {
@@ -104,36 +101,37 @@ class GameActivity : SDLActivity() {
                 RecentStateStore(AppPaths(filesDir)).capture(current)
             }
 
-            sessionStore.recordResult(
-                GameSessionResult(
-                    sessionId = current.sessionId,
-                    nonce = current.nonce,
-                    profileId = current.profileId,
-                    completedAtEpochMillis = System.currentTimeMillis(),
-                    outcome = if (destroyRequested) {
-                        SessionOutcome.INTERRUPTED
-                    } else if (exitCode == 0) {
-                        SessionOutcome.CLEAN_EXIT
-                    } else {
-                        SessionOutcome.STARTUP_FAILURE
-                    },
-                    failureCode = if (destroyRequested) {
-                        SessionFailureCode.PROCESS_LOST
-                    } else if (exitCode != 0) {
-                        SessionFailureCode.NATIVE_STARTUP_FAILURE
-                    } else {
-                        null
-                    },
-                    userMessage = if (destroyRequested) {
-                        "The game was interrupted. Your saves are still available."
-                    } else if (exitCode != 0) {
-                        "The game stopped during startup. Your content and saves were not changed."
-                    } else {
-                        null
-                    },
-                ),
-            )
-            resultWritten = true
+            completion.publishResult {
+                sessionStore.recordResult(
+                    GameSessionResult(
+                        sessionId = current.sessionId,
+                        nonce = current.nonce,
+                        profileId = current.profileId,
+                        completedAtEpochMillis = System.currentTimeMillis(),
+                        outcome = if (destroyRequested) {
+                            SessionOutcome.INTERRUPTED
+                        } else if (exitCode == 0) {
+                            SessionOutcome.CLEAN_EXIT
+                        } else {
+                            SessionOutcome.STARTUP_FAILURE
+                        },
+                        failureCode = if (destroyRequested) {
+                            SessionFailureCode.PROCESS_LOST
+                        } else if (exitCode != 0) {
+                            SessionFailureCode.NATIVE_STARTUP_FAILURE
+                        } else {
+                            null
+                        },
+                        userMessage = if (destroyRequested) {
+                            "The game was interrupted. Your saves are still available."
+                        } else if (exitCode != 0) {
+                            "The game stopped during startup. Your content and saves were not changed."
+                        } else {
+                            null
+                        },
+                    ),
+                )
+            }
         } catch (error: SessionValidationException) {
             writeStartupFailure(error.code, error.message.orEmpty())
             finishAfterStartupFailure()
@@ -145,7 +143,7 @@ class GameActivity : SDLActivity() {
             )
             finishAfterStartupFailure()
         } finally {
-            terminateAfterDestroy = true
+            completion.nativeFinished()
         }
     }
 
@@ -156,10 +154,22 @@ class GameActivity : SDLActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed = true
-        if (::audioFocus.isInitialized && !audioFocus.request()) {
-            pauseNativeThread()
+        if (!isFinishing && ::audio.isInitialized) {
+            audio.start()
+            resumeNativeThread()
         }
         GamePresentationController.configureImmersive(this)
+    }
+
+    override fun resumeNativeThread() {
+        // SDL calls this from onStart, before call muting is initialized.
+        if (activityResumed && !isFinishing &&
+            ::audio.isInitialized && audio.canPlay
+        ) {
+            super.resumeNativeThread()
+        } else {
+            super.pauseNativeThread()
+        }
     }
 
     override fun onStart() {
@@ -174,7 +184,8 @@ class GameActivity : SDLActivity() {
 
     override fun onPause() {
         activityResumed = false
-        if (::audioFocus.isInitialized) audioFocus.abandon()
+        if (::audio.isInitialized) audio.stop()
+        pauseNativeThread()
         super.onPause()
     }
 
@@ -205,11 +216,18 @@ class GameActivity : SDLActivity() {
 
     override fun onDestroy() {
         destroyRequested = true
-        super.onDestroy()
-        if (terminateAfterDestroy) {
-            Process.killProcess(Process.myPid())
+        val neverStarted = mSDLThread == null
+        if (neverStarted) {
+            writeStartupFailure(
+                SessionFailureCode.PROCESS_LOST,
+                "The game was closed before it started. You can press Play again.",
+            )
         }
+        super.onDestroy()
+        completion.activityDestroyed(nativeStarted = !neverStarted)
     }
+
+    private external fun nativeSetAudioMuted(muted: Boolean)
 
     private fun writeStartupFailure(
         code: SessionFailureCode,
@@ -217,16 +235,17 @@ class GameActivity : SDLActivity() {
     ) {
         val current = descriptor
         runCatching {
-            sessionStore.recordStartupFailure(
-                sessionId = current?.sessionId ?: requestedSessionId,
-                nonce = current?.nonce.orEmpty(),
-                profileId = current?.profileId,
-                code = code,
-                userMessage = message.ifBlank {
-                    "The game could not start. Please try again."
-                },
-            )
-            resultWritten = true
+            completion.publishResult {
+                sessionStore.recordStartupFailure(
+                    sessionId = current?.sessionId ?: requestedSessionId,
+                    nonce = current?.nonce.orEmpty(),
+                    profileId = current?.profileId,
+                    code = code,
+                    userMessage = message.ifBlank {
+                        "The game could not start. Please try again."
+                    },
+                )
+            }
         }.onFailure {
             Log.e(TAG, "Could not write game startup result", it)
         }

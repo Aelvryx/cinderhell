@@ -1,6 +1,6 @@
 # Cinderhell
 
-[![Android](https://github.com/AnthonyStainer/cinderhell/actions/workflows/android.yml/badge.svg)](https://github.com/AnthonyStainer/cinderhell/actions/workflows/android.yml)
+[![Android](https://github.com/Aelvryx/cinderhell/actions/workflows/android.yml/badge.svg)](https://github.com/Aelvryx/cinderhell/actions/workflows/android.yml)
 [![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 
 **One excellent Doom engine, presented as a polished Android game rather than
@@ -20,7 +20,7 @@ Cinderhell 0.1 is a working MVP targeting `arm64-v8a` handhelds:
 - Doom, Doom II, TNT, Plutonia, Freedoom, and Woof-compatible vanilla, Boom,
   MBF, and MBF21 content are in scope.
 - Preview builds are distributed through
-  [GitHub Releases](https://github.com/AnthonyStainer/cinderhell/releases) as
+  [GitHub Releases](https://github.com/Aelvryx/cinderhell/releases) as
   signed, checksummed `arm64-v8a` APKs with corresponding source.
 - Bluetooth gamepads may work through SDL on a best-effort basis, but mappings,
   rumble, and reconnect behavior are not currently validated or supported.
@@ -74,7 +74,7 @@ components listed in [docs/toolchain.md](docs/toolchain.md), including JDK 17,
 compile SDK 37.0, build-tools 36.0.0, NDK 27.0.12077973, and CMake 3.31.6.
 
 ```sh
-git clone --recurse-submodules https://github.com/AnthonyStainer/cinderhell.git
+git clone --recurse-submodules https://github.com/Aelvryx/cinderhell.git
 cd cinderhell
 
 ./scripts/fetch-jdk.sh

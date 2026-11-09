@@ -153,26 +153,37 @@ internal class SessionStore(
     @Synchronized
     fun recoverOrphanedActiveSessions(gameProcessRunning: Boolean) {
         if (gameProcessRunning) return
-        paths.activeSessions.listFiles()
-            .orEmpty()
+        // Pending requests can also be orphaned before the game consumes them.
+        // Callers must exclude launches that have not started the process yet.
+        listOf(paths.activeSessions, paths.pendingSessions)
+            .flatMap { it.listFiles().orEmpty().toList() }
             .filter { it.isFile && it.extension == "json" }
-            .forEach { active ->
-                val descriptor = runCatching { decodeDescriptor(active) }.getOrNull()
-                if (descriptor == null) {
-                    active.delete()
-                } else {
-                    recordResult(
-                        GameSessionResult(
-                            sessionId = descriptor.sessionId,
-                            nonce = descriptor.nonce,
-                            profileId = descriptor.profileId,
-                            completedAtEpochMillis = now(),
-                            outcome = SessionOutcome.INTERRUPTED,
-                            failureCode = SessionFailureCode.PROCESS_LOST,
-                            userMessage = "The previous game session stopped unexpectedly. Your saves are still available.",
-                        ),
-                    )
+            .forEach { sessionFile ->
+                val result = runCatching {
+                    val descriptor = decodeDescriptor(sessionFile)
+                    check(descriptor.schemaVersion == SESSION_SCHEMA_VERSION)
+                    check(descriptor.sessionId == sessionFile.nameWithoutExtension)
+                    check(NONCE_PATTERN.matches(descriptor.nonce))
+                    GameSessionResult(
+                        sessionId = descriptor.sessionId,
+                        nonce = descriptor.nonce,
+                        profileId = descriptor.profileId,
+                        completedAtEpochMillis = now(),
+                        outcome = SessionOutcome.INTERRUPTED,
+                        failureCode = SessionFailureCode.PROCESS_LOST,
+                        userMessage = "The previous game session stopped unexpectedly. Your saves are still available.",
+                    ).also(::validateResult)
+                }.getOrNull()
+                if (result != null) {
+                    val resultFile = paths.sessionResult(result.sessionId)
+                    // A process may have published its result before dying during
+                    // descriptor removal. Keep that result (and its original outcome).
+                    if (!resultFile.exists()) {
+                        AtomicFiles.writeUtf8(resultFile, json.encodeToString(result))
+                    }
                 }
+                // Delete only the file inspected, never a path from an untrusted descriptor.
+                sessionFile.delete()
             }
     }
 

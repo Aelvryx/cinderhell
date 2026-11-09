@@ -122,9 +122,10 @@ class LauncherActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (!::sessions.isInitialized) return
+        val recoveryTicket = sessions.recoveryTicket()
         lifecycleScope.launch {
             val results = withContext(Dispatchers.IO) {
-                sessions.recoverAndConsumeResults()
+                sessions.recoverAndConsumeResults(recoveryTicket)
             }
             results.lastOrNull()?.let { result ->
                 notice = when (result.outcome) {
@@ -206,8 +207,10 @@ class LauncherActivity : ComponentActivity() {
             busy = true
             notice = null
             var descriptor: GameSessionDescriptor? = null
+            var launchTicket: Long? = null
             try {
                 descriptor = withContext(Dispatchers.IO) {
+                    launchTicket = sessions.beginLaunch()
                     if (continueRecent) {
                         sessions.createContinueSession()
                     } else {
@@ -234,6 +237,7 @@ class LauncherActivity : ComponentActivity() {
                     error.message ?: "The game could not be opened.",
                 )
             } finally {
+                launchTicket?.let(sessions::endLaunch)
                 busy = false
             }
         }

@@ -10,6 +10,29 @@ All notable Cinderhell changes are recorded here. The project uses
 - Bluetooth gamepad compatibility, rumble, and reconnect validation.
 - Explicit user-controlled backup/export and restore.
 
+## [0.1.0-preview.3] - 2026-11-09
+
+### Fixed
+
+- Fixed a black screen when launching Doom or returning to it during a phone
+  call. Gameplay now continues while the game's own audio is muted, and sound
+  returns after the call ends.
+- Recovered abandoned launch requests immediately so an interrupted session
+  cannot leave Play blocked until its request expires.
+- Preserved the first session result and terminated the game process after
+  delayed native shutdown, allowing the next game to launch safely.
+
+### Changed
+
+- Game audio now mixes with music playing in other apps.
+- Documented Windows/Scoop setup and refreshed the OpenSpec development workflow.
+
+### Validation
+
+- Verified music mixing, incoming calls, launching during a connected call,
+  and sound restoration on a physical Android 16 phone.
+- Passed 53 JVM tests, 13 device tests, and native audio/teardown regressions.
+
 ## [0.1.0-preview.2] - 2026-07-26
 
 ### Changed
@@ -34,6 +57,7 @@ All notable Cinderhell changes are recorded here. The project uses
 - Reproducible, signed GitHub draft-prerelease pipeline with corresponding
   source and checksums.
 
-[Unreleased]: https://github.com/AnthonyStainer/cinderhell/compare/v0.1.0-preview.2...HEAD
-[0.1.0-preview.2]: https://github.com/AnthonyStainer/cinderhell/compare/v0.1.0-preview.1...v0.1.0-preview.2
-[0.1.0-preview.1]: https://github.com/AnthonyStainer/cinderhell/tree/v0.1.0-preview.1
+[Unreleased]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.3...HEAD
+[0.1.0-preview.3]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.2...v0.1.0-preview.3
+[0.1.0-preview.2]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.1...v0.1.0-preview.2
+[0.1.0-preview.1]: https://github.com/Aelvryx/cinderhell/tree/v0.1.0-preview.1

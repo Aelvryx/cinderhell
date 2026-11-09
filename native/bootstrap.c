@@ -2,6 +2,7 @@
 #include <AL/alc.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include "cinderhell_audio.h"
 
 int main(int argc, char **argv)
 {
@@ -42,6 +43,7 @@ int main(int argc, char **argv)
     ALCcontext *audio_context =
         audio_device == NULL ? NULL : alcCreateContext(audio_device, NULL);
     if (audio_context != NULL && alcMakeContextCurrent(audio_context)) {
+        CinderhellAudio_Attach(audio_context);
         SDL_Log("Cinderhell OpenAL smoke device initialized: %s",
                 alGetString(AL_RENDERER));
     } else if (audio_device != NULL) {
@@ -74,6 +76,7 @@ int main(int argc, char **argv)
 
     SDL_Log("Cinderhell SDL3 smoke runtime returning normally");
     if (audio_context != NULL) {
+        CinderhellAudio_Detach(audio_context);
         alcMakeContextCurrent(NULL);
         alcDestroyContext(audio_context);
     }

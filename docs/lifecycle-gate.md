@@ -31,3 +31,44 @@ used the pinned native/runtime revisions in `third_party/dependencies.lock.toml`
 
 The release manifest contains no lifecycle-test receiver. The transient audio
 focus probe is declared only by `app/src/debug/AndroidManifest.xml`.
+
+## Issue #13 regression checks
+
+The change separates foreground gameplay from audio output: game music and SFX
+mix with other media, mute during calls, and restore after calls without stopping
+rendering. Backgrounding still pauses gameplay and mutes sound.
+
+On 2026-11-09, investigation on an AYN Odin2 Portal (Android 13) verified the
+Windows toolchain, rendered bundled Freedoom, and passed 13 instrumentation tests.
+A Xiaomi 25010PN30G (Android 16) confirmed a real phone call returns delayed audio
+focus before the native game thread starts, reproducing the cause of issue #13.
+These investigation builds preceded the final independent-audio implementation.
+
+The revised build passes 53 JVM tests and all 13 instrumentation tests on the
+Xiaomi Android 16 phone. The maintainer confirmed that music in another app and
+Freedoom's audio play together. Physical call checks also passed:
+
+- An incoming call muted game output before the activity paused. Returning to
+  Doom during the connected call resumed rendering in the same process and
+  remained silent, including after regaining window focus.
+- Force-stopping and reopening the debug app recovered the interrupted session
+  as `PROCESS_LOST`. Play launched a new game during the connected call, with
+  mute initialized before the single native engine thread started. The pending
+  directory was empty and only the new active descriptor remained.
+- The caller hung up while Doom stayed foreground. Game sound returned without
+  a restart or freeze, and the game process remained the same.
+
+Native OpenAL loopback tests render actual samples to memory and verify initial
+mute, both music/SFX source gains, overlapping mute reasons, mute during deferred
+updates, context restoration/reinitialization, and 100 concurrent teardown
+cycles. Removing the app mute or deferred-update flush made the corresponding
+regression fail. Bootstrap validation, three Python tests, strict OpenSpec
+validation, and Android lint also passed. Lint retains 19 existing warnings
+about dependency versions and platform compatibility; no errors remain.
+
+JVM regressions cover muted foreground gameplay during calls, background mute,
+session orphan recovery, result preservation, launch handoff, and late native
+shutdown. Call ending while the game stays backgrounded is covered by the state
+tests, not a separate physical call check. The API 26-30 polling fallback has not
+been physically tested. Record only device model and Android version; keep
+device identifiers and call details out of committed evidence.

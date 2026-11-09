@@ -195,3 +195,76 @@ index c7c8206..fc72c95 100644
      install(TARGETS woof woof-setup RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
  endif()
 +endif()
+diff --git a/src/i_oalsound.c b/src/i_oalsound.c
+index 8ed5372c..2b170b2b 100644
+--- a/src/i_oalsound.c
++++ b/src/i_oalsound.c
+@@ -21,6 +21,10 @@
+ #include "alext.h"
+ #include "efx.h"
+ 
++#ifdef __ANDROID__
++#include "cinderhell_audio.h"
++#endif
++
+ #include <math.h>
+ #include <stdlib.h>
+ 
+@@ -163,6 +167,9 @@ void I_OAL_ShutdownSound(void)
+         free(oal->sources);
+     }
+ 
++#ifdef __ANDROID__
++    CinderhellAudio_Detach(oal->context);
++#endif
+     alcMakeContextCurrent(NULL);
+     if (oal->context)
+     {
+@@ -481,6 +488,9 @@ boolean I_OAL_InitSound(int snd_module)
+         I_OAL_ShutdownSound();
+         return false;
+     }
++#ifdef __ANDROID__
++    CinderhellAudio_Attach(oal->context);
++#endif
+     PrintDeviceInfo(oal->device);
+ 
+     oal->sources = malloc(sizeof(*oal->sources) * MAX_CHANNELS);
+@@ -834,10 +844,15 @@ void I_OAL_ResumeSound(int channel)
+     }
+ }
+ 
++#ifndef __ANDROID__
+ static ALfloat listener_gain = 1.0f;
++#endif
+ 
+ void I_OAL_MuteSound(void)
+ {
++#ifdef __ANDROID__
++    CinderhellAudio_SetWindowMuted(true);
++#else
+     if (!oal)
+     {
+         return;
+@@ -845,16 +860,21 @@ void I_OAL_MuteSound(void)
+ 
+     alGetListenerf(AL_GAIN, &listener_gain);
+     alListenerf(AL_GAIN, (ALfloat) 0.0f);
++#endif
+ }
+ 
+ void I_OAL_UnmuteSound(void)
+ {
++#ifdef __ANDROID__
++    CinderhellAudio_SetWindowMuted(false);
++#else
+     if (!oal)
+     {
+         return;
+     }
+ 
+     alListenerf(AL_GAIN, listener_gain);
++#endif
+ }
+ 
+ boolean I_OAL_SoundIsPlaying(int channel)

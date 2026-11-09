@@ -160,12 +160,34 @@ internal class BundledSessionCoordinator(context: Context) {
         return descriptor
     }
 
-    suspend fun recoverAndConsumeResults(): List<GameSessionResult> {
-        store.cleanupTemporaryAndExpiredFiles()
+    fun beginLaunch(): Long = launchGuard.beginLaunch {
+        // A winning launch invalidates queued resume recovery. Recover its old
+        // orphans now, before creating the new request, and leave results queued
+        // for recoverAndConsumeResults to persist to the library and diagnostics.
         store.recoverOrphanedActiveSessions(
             gameProcessRunning = GameProcessGate.isRunning(applicationContext),
         )
-        return store.consumeResults().also { results ->
+    }
+
+    fun endLaunch(ticket: Long) = launchGuard.endLaunch(ticket)
+
+    fun recoveryTicket(): Long? = launchGuard.recoveryTicket()
+
+    suspend fun recoverAndConsumeResults(
+        ticket: Long? = recoveryTicket(),
+    ): List<GameSessionResult> {
+        val recovered = launchGuard.recoverIfIdle(ticket) {
+            synchronized(store) {
+                // Do not expire a request owned by a live game process. Recovery
+                // comes first so expired orphans retain their interrupted result.
+                if (!GameProcessGate.isRunning(applicationContext)) {
+                    store.recoverOrphanedActiveSessions(gameProcessRunning = false)
+                    store.cleanupTemporaryAndExpiredFiles()
+                }
+                store.consumeResults()
+            }
+        } ?: return emptyList()
+        return recovered.also { results ->
             results.filter { it.outcome != SessionOutcome.CLEAN_EXIT }
                 .forEach(diagnostics::record)
             results.forEach { result ->
@@ -206,6 +228,8 @@ internal class BundledSessionCoordinator(context: Context) {
 
     companion object {
         const val SESSION_ID_EXTRA = "dev.cinderhell.extra.SESSION_ID"
+        // Shared by coordinator instances, including across launcher recreation.
+        private val launchGuard = SessionLaunchGuard()
 
         private fun formatLevel(
             identity: dev.cinderhell.library.GameIdentity?,
@@ -219,6 +243,34 @@ internal class BundledSessionCoordinator(context: Context) {
             } else {
                 "MAP${map.toString().padStart(2, '0')}"
             }
+    }
+}
+
+internal class SessionLaunchGuard {
+    private var generation = 0L
+    private var launching = false
+
+    @Synchronized
+    fun beginLaunch(recoverOrphans: () -> Unit = {}): Long {
+        check(!launching) { "Another game launch is already in progress." }
+        recoverOrphans()
+        launching = true
+        return ++generation
+    }
+
+    @Synchronized
+    fun endLaunch(ticket: Long) {
+        if (ticket == generation) launching = false
+    }
+
+    @Synchronized
+    fun recoveryTicket(): Long? = generation.takeUnless { launching }
+
+    @Synchronized
+    fun <T> recoverIfIdle(ticket: Long?, recover: () -> T): T? {
+        if (launching || ticket == null || ticket != generation) return null
+        // Keep the liveness check and file recovery atomic with beginLaunch.
+        return recover()
     }
 }
 

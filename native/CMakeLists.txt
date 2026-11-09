@@ -29,6 +29,7 @@ if(CINDERHELL_NATIVE_SMOKE)
     target_compile_features(main PRIVATE c_std_11)
     target_compile_options(main PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(main PRIVATE SDL3::SDL3 OpenAL::OpenAL)
+    target_sources(main PRIVATE cinderhell_audio.c)
 else()
     set(WITH_SNDFILE OFF CACHE BOOL "" FORCE)
     set(WITH_FLUIDSYNTH OFF CACHE BOOL "" FORCE)
@@ -39,4 +40,7 @@ else()
     add_subdirectory(
         "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/woof"
         "${CMAKE_CURRENT_BINARY_DIR}/woof")
+    # Woof's Android target is named woof but outputs SDLActivity's libmain.so.
+    target_sources(woof PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/cinderhell_audio.c")
+    target_include_directories(woof PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()

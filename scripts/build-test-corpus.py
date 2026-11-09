@@ -114,7 +114,7 @@ def build() -> None:
         for path in sorted(OUTPUT.iterdir())
         if path.is_file() and path.name != "SHA256SUMS"
     ) + "\n"
-    (OUTPUT / "SHA256SUMS").write_text(manifest, encoding="utf-8")
+    (OUTPUT / "SHA256SUMS").write_bytes(manifest.encode("utf-8"))
     print(manifest, end="")
 
 

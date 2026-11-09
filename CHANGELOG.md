@@ -10,6 +10,18 @@ All notable Cinderhell changes are recorded here. The project uses
 - Bluetooth gamepad compatibility, rumble, and reconnect validation.
 - Explicit user-controlled backup/export and restore.
 
+## [0.1.0-preview.4] - 2026-11-09
+
+### Changed
+
+- Updated the grouped Android build dependencies and pinned GitHub Actions.
+- Documented the quarterly dependency maintenance and signed-upgrade checks.
+
+### Fixed
+
+- Made the generated compatibility-corpus checksum manifest identical on
+  Windows and Linux so Git Bash can verify it on Windows.
+
 ## [0.1.0-preview.3] - 2026-11-09
 
 ### Fixed
@@ -57,7 +69,8 @@ All notable Cinderhell changes are recorded here. The project uses
 - Reproducible, signed GitHub draft-prerelease pipeline with corresponding
   source and checksums.
 
-[Unreleased]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.3...HEAD
+[Unreleased]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.4...HEAD
+[0.1.0-preview.4]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.3...v0.1.0-preview.4
 [0.1.0-preview.3]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.2...v0.1.0-preview.3
 [0.1.0-preview.2]: https://github.com/Aelvryx/cinderhell/compare/v0.1.0-preview.1...v0.1.0-preview.2
 [0.1.0-preview.1]: https://github.com/Aelvryx/cinderhell/tree/v0.1.0-preview.1

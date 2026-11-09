@@ -11,10 +11,14 @@ The MVP build is pinned to the following baseline:
 | Minimum SDK | 26 |
 | Java bytecode target | 17 |
 | Verified Gradle JVM | Eclipse Temurin 17.0.19+10 |
-| Gradle | 9.6.0 |
-| Android Gradle Plugin | 9.3.1 |
-| Kotlin / Compose compiler plugin | 2.4.0 |
-| Compose BOM | 2026.06.00 |
+| Gradle | 9.8.2 |
+| Android Gradle Plugin | 9.5.1 |
+| Kotlin / Compose compiler plugin | 2.4.21 |
+| KSP | 2.3.12 |
+| Compose BOM | 2026.09.00 |
+| Room | 2.8.5 |
+| Navigation Compose | 2.10.2 |
+| Kotlinx serialization | 1.12.0 |
 | Android NDK | 27.0.12077973 |
 | CMake | 3.31.6 |
 | Packaged ABI | `arm64-v8a` only |
@@ -78,6 +82,10 @@ Node 26.13.0, and OpenSpec 1.16.1 with the pinned Gradle/SDK/NDK/CMake versions
 above. New shells pick up tools installed by Scoop; an already-running IDE
 may need restarting. `openspec update` refreshes generated agent workflows
 without rewriting the project's specifications.
+
+Before changing the Gradle version on Windows, run `.\gradlew.bat --stop`.
+An older daemon can keep migrated lint JARs locked after an upgrade; if that
+happens, stop the daemon using its old Gradle distribution before retrying lint.
 
 ## Native audio regression test
 

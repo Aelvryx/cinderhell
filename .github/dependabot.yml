@@ -27,6 +27,11 @@ updates:
     patterns:
       - "*"
     multi-ecosystem-group: foundation
+    ignore:
+      # Concurrent KSP executions can lose library symbols in this release.
+      # https://github.com/google/ksp/issues/3286
+      - dependency-name: com.google.devtools.ksp
+        versions: ["2.3.13"]
     cooldown:
       default-days: 14
       semver-major-days: 30

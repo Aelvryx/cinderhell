@@ -111,6 +111,9 @@ More detail is available in the
 [release guide](docs/release.md), and
 [compatibility matrix](docs/compatibility-matrix.md).
 
+Routine dependency updates follow the quarterly grouped
+[maintenance process](docs/dependency-maintenance.md).
+
 ## Releases
 
 Preview tags follow `vMAJOR.MINOR.PATCH-preview.N`. A matching tag builds and
